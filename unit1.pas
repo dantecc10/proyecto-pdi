@@ -43,8 +43,9 @@ type
     procedure Image1MouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer
       );
     procedure hideLabelShape(Sender: TObject);
-    procedure MenuItem2Click(Sender: TObject);
-    procedure MenuItem6Click(Sender: TObject);
+    procedure MenuItem2Click(Sender: TObject); // Abrir imagen
+    procedure MenuItem6Click(Sender: TObject); // Botón de escala de grises
+    procedure MenuItem8Click(Sender: TObject); // Botón de restaurar
   private
 
   public
@@ -63,18 +64,19 @@ type
     procedure RGBMatrixToHSVMatrix(imageHeight, imageWidth: Integer; const RGB: RGB_MATRIX; var HSV: HSV_MATRIX);
 
     // Histograma y grises
-    procedure mediumRangeGrayScale(imageHeight, imageWidth: Integer; var matrix: RGB_MATRIX; var GRAY_SCALE_VALUES: GRAY_SCALE_MATRIX; B: TBitmap);
+    procedure mediumRangeGrayScale(imageHeight, imageWidth: Integer; var matrix: RGB_MATRIX; var CONVERTED_GRAY_MATRIX: RGB_MATRIX; B: TBitmap);
 //    procedure generateHistogram;
   end;
 
 var
   Form1: TForm1;
 
-  HEIGHT, WIDTH: Integer;
+  HEIGHT, WIDTH, COLOR_MODE: Integer;
   //MAT: RGB_MATRIX ;  //del tipo propio para alamacenar R,G,B
   MATRIX: RGB_MATRIX;
   CONVERTED_HSV_MATRIX:  HSV_MATRIX;
   GRAY_SCALE_VALUES: GRAY_SCALE_MATRIX;
+  CONVERTED_GRAY_MATRIX: RGB_MATRIX;
   BMAP: TBitmap;   //para acceso a imagenes bmp
 
 implementation
@@ -202,6 +204,7 @@ procedure TForm1.FormCreate(Sender: TObject);
 begin
    BMAP:=Tbitmap.Create;  //Instanciar-crear objeto de la clase Tbitmap
    Image1.OnMouseLeave := @hideLabelShape;
+   COLOR_MODE := 0;
 end;
 
 
@@ -217,51 +220,53 @@ begin
   // Mostrar color
   Label1.Visible := True;
   Shape1.Visible := True;
-  Shape1.Brush.Color := RGBToColor(MATRIX[x, y, 0], MATRIX[x, y, 1], MATRIX[x, y, 2]);
+  if COLOR_MODE = 1 then
+    Shape1.Brush.Color := RGBToColor(MATRIX[x, y, 0], MATRIX[x, y, 1], MATRIX[x, y, 2])
+  else
+    Shape1.Brush.Color := RGBToColor(CONVERTED_GRAY_MATRIX[x, y, 0], CONVERTED_GRAY_MATRIX[x, y, 1], CONVERTED_GRAY_MATRIX[x, y, 2]);
+
 
 end;
 
-procedure TForm1.mediumRangeGrayScale(imageHeight, imageWidth: Integer; var matrix: RGB_MATRIX; var GRAY_SCALE_VALUES: GRAY_SCALE_MATRIX; B: TBitmap);
+procedure TForm1.mediumRangeGrayScale(imageHeight, imageWidth: Integer; var matrix: RGB_MATRIX; var CONVERTED_GRAY_MATRIX: RGB_MATRIX; B: TBitmap);
 var
   i, j: Integer;
-  red, green, blue, gray: Byte; // Mejor Byte que Integer para colores (0-255)
+  red, green, blue, gray: Byte;
   minimumValue, maximumValue: Byte;
 begin
-  // 1. Validación de seguridad usando los parámetros
   if (imageWidth = 0) or (imageHeight = 0) then Exit;
 
-  // 2. Asegurar tamaño de la matriz de grises (útil para el histograma después)
-  SetLength(GRAY_SCALE_VALUES, imageWidth, imageHeight);
+  // CORRECCIÓN 1: Inicializar la matriz DE DESTINO, no la global auxiliar
+  SetLength(CONVERTED_GRAY_MATRIX, imageWidth, imageHeight, 3);
 
-  for i := 0 to imageWidth - 1 do // Columnas (X)
+  // Opcional: Si también necesitas la matriz de solo valores de gris (1 canal)
+  //SetLength(GRAY_SCALE_VALUES, imageWidth, imageHeight);
+
+  for i := 0 to imageWidth - 1 do
   begin
-    for j := 0 to imageHeight - 1 do // Filas (Y)
+    for j := 0 to imageHeight - 1 do
     begin
       red   := matrix[i, j, 0];
       green := matrix[i, j, 1];
       blue  := matrix[i, j, 2];
 
-      // Rango Medio: (Max + Min) / 2
+      // Rango Medio
       maximumValue := Max(red, Max(green, blue));
       minimumValue := Min(red, Min(green, blue));
-
-      // 'div' ya devuelve un entero, no necesitas Round
       gray := (maximumValue + minimumValue) div 2;
 
-      // A. Guardar en la matriz de solo grises (para tus cálculos futuros)
+      // Guardar en matriz de valores simples (para histogramas futuros)
       GRAY_SCALE_VALUES[i, j] := gray;
 
-      // B. CORRECCIÓN: Asignar el gris a los 3 canales de la MATRIZ RGB
-      // Esto hace que la imagen se vea gris visualmente
-      matrix[i, j, 0] := gray;
-      matrix[i, j, 1] := gray;
-      matrix[i, j, 2] := gray;
+      // CORRECCIÓN 2: Escribir en la matriz que acabamos de inicializar
+      CONVERTED_GRAY_MATRIX[i, j, 0] := gray;
+      CONVERTED_GRAY_MATRIX[i, j, 1] := gray;
+      CONVERTED_GRAY_MATRIX[i, j, 2] := gray;
     end;
   end;
 
-  // C. CORRECCIÓN FINAL: Pasar los datos de la matriz al Bitmap
-  // Usamos tu procedimiento existente que ya maneja ScanLine correctamente
-  copyMatrixToImage(imageHeight, imageWidth, matrix, B);
+  // Pasar los datos de la NUEVA matriz gris al Bitmap para visualizar
+  copyMatrixToImage(imageHeight, imageWidth, CONVERTED_GRAY_MATRIX, B);
 end;
 
 procedure TForm1.hideLabelShape(Sender: TObject);
@@ -288,19 +293,28 @@ begin
      copyImageToMatrix(HEIGHT,WIDTH,BMAP,MATRIX);  //copiar (TPicture)contenido de bitmap a MAT
      Image1.Picture.Assign(BMAP);  //visulaizar imagen
      RGBMatrixToHSVMatrix(HEIGHT, WIDTH, MATRIX, CONVERTED_HSV_MATRIX);
+     COLOR_MODE := 1
   end;
 end;
 
 procedure TForm1.MenuItem6Click(Sender: TObject);
 var
-  GRAY_MATRIX: GRAY_sCALE_MATRIX;
+  GRAY_MATRIX: GRAY_SCALE_MATRIX;
 begin
   if (WIDTH > 0) then
   begin
-   mediumRangeGrayScale(HEIGHT, WIDTH, MATRIX, GRAY_MATRIX, BMAP);
-
+   mediumRangeGrayScale(HEIGHT, WIDTH, MATRIX, CONVERTED_GRAY_MATRIX, BMAP);
    Image1.Picture.Assign(BMAP);
+   COLOR_MODE := 2;
   end;
+end;
+
+procedure TForm1.MenuItem8Click(Sender: TObject);
+begin
+  SetLength(MATRIX,WIDTH,HEIGHT,3);
+  copyMatrixToImage(HEIGHT, WIDTH, MATRIX, BMAP);  //copiar (TPicture)contenido de bitmap a MAT
+  Image1.Picture.Assign(BMAP);  //visulaizar imagen
+  COLOR_MODE := 1
 end;
 
 end.
