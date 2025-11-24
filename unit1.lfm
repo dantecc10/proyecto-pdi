@@ -2,10 +2,10 @@ object Form1: TForm1
   Left = 460
   Height = 532
   Top = 337
-  Width = 900
+  Width = 1100
   Caption = 'Acceso-Scanline'
   ClientHeight = 532
-  ClientWidth = 900
+  ClientWidth = 1100
   Constraints.MinWidth = 900
   Menu = MainMenu1
   OnCreate = FormCreate
@@ -13,7 +13,7 @@ object Form1: TForm1
     Left = 0
     Height = 21
     Top = 511
-    Width = 900
+    Width = 1100
     Panels = <    
       item
         Alignment = taCenter
@@ -90,7 +90,8 @@ object Form1: TForm1
     Left = 440
     Height = 312
     Top = 0
-    Width = 444
+    Width = 624
+    AutoFocus = True
     AxisList = <    
       item
         Marks.LabelBrush.Style = bsClear
@@ -99,18 +100,23 @@ object Form1: TForm1
         Title.LabelBrush.Style = bsClear
       end    
       item
+        Grid.Cosmetic = False
+        Grid.Visible = False
         Intervals.NiceSteps = '1'
+        Intervals.Options = [aipUseMaxLength, aipUseNiceSteps]
         Alignment = calBottom
         Marks.LabelBrush.Style = bsClear
         Marks.Range.Max = 5
         Marks.Range.UseMax = True
         Marks.Range.UseMin = True
         Minors = <>
+        OrthogonalAxisIndex = 0
         Range.Max = 5
         Range.UseMax = True
         Range.UseMin = True
         Title.LabelBrush.Style = bsClear
       end>
+    Proportional = True
     Title.Text.Strings = (
       'TAChart'
     )
@@ -142,6 +148,7 @@ object Form1: TForm1
       Caption = 'Gráficos'
       object MenuItem4: TMenuItem
         Caption = 'Histograma'
+        OnClick = MenuItem4Click
       end
     end
     object MenuItem5: TMenuItem
@@ -155,6 +162,7 @@ object Form1: TForm1
       end
       object MenuItem8: TMenuItem
         Caption = 'Restaurar imagen original'
+        OnClick = MenuItem8Click
       end
     end
   end

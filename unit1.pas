@@ -80,7 +80,7 @@ type
 var
   Form1: TForm1;
 
-  HEIGHT, WIDTH, COLOR_MODE: Integer;
+  IMG_HEIGHT, IMG_WIDTH, COLOR_MODE: Integer;
   //MAT: RGB_MATRIX ;  //del tipo propio para alamacenar R,G,B
   MATRIX, ORIGINAL_MATRIX: RGB_MATRIX;
   CONVERTED_HSV_MATRIX:  HSV_MATRIX;
@@ -99,19 +99,27 @@ var
   i, j, k: Integer;
   P: PByte;
 begin
-  for i:=0 to imageHeight - 1 do
+  if (imageWidth = 0) or (imageHeight = 0) then
   begin
-    B.BeginUpdate;
-    P := B.ScanLine[i];
-    for j := 0 to imageWidth - 1 do
+    Exit;
+  end;
+
+  B.BeginUpdate;
+  try
+    for i := 0 to imageHeight - 1 do
     begin
-      k:= 3 * j;
-      matrix[j, i, 0] := P [k + 2]; // R
-      matrix[j, i, 1] := P [k + 1]; // G
-      matrix[j, i, 2] := P [k + 0]; // B
-    end; // j
-  end; // i
-  B.EndUpdate;
+      P := B.ScanLine[i];
+      for j := 0 to imageWidth - 1 do
+      begin
+        k := 3 * j;
+        matrix[j, i, 0] := P[k + 2]; // R
+        matrix[j, i, 1] := P[k + 1]; // G
+        matrix[j, i, 2] := P[k + 0]; // B
+      end; // j
+    end; // i
+  finally
+    B.EndUpdate;
+  end;
 end;
 
 procedure TForm1.copyMatrixToImage(imageHeight, imageWidth: Integer; matrix:RGB_MATRIX; var B:TBitmap);
@@ -119,19 +127,27 @@ var
   i, j, k: Integer;
   P: PByte;
 begin
-  for i:=0 to imageHeight - 1 do
+  if (imageWidth = 0) or (imageHeight = 0) then
   begin
-    B.BeginUpdate;
-    P:= B.ScanLine[i];
-    for j:=0 to imageWidth - 1 do
+    Exit;
+  end;
+
+  B.BeginUpdate;
+  try
+    for i := 0 to imageHeight - 1 do
     begin
-      k:= 3 * j;
-      P[k + 2]:= matrix[j, i, 0]; // R
-      P[k + 1]:= matrix[j, i, 1]; // G
-      P[k + 0]:= matrix[j, i, 2]; // B
-    end; // j
+      P := B.ScanLine[i];
+      for j := 0 to imageWidth - 1 do
+      begin
+        k := 3 * j;
+        P[k + 2] := matrix[j, i, 0]; // R
+        P[k + 1] := matrix[j, i, 1]; // G
+        P[k + 0] := matrix[j, i, 2]; // B
+      end; // j
+    end; // i
+  finally
     B.EndUpdate;
-  end; // i
+  end;
 
   // HEIGHT := B.Height;
   // WIDTH := B.Width;
@@ -222,22 +238,45 @@ end;
 procedure TForm1.Image1MouseMove(Sender: TObject; Shift: TShiftState; X,
   Y: Integer);
 begin
-  if (X < 0) or (X >= WIDTH) or (Y < 0) or (Y >= HEIGHT) then Exit;
-  if (WIDTH = 0) or (HEIGHT = 0) then Exit;
-  
-  StatusBar1.Panels[1].Text := IntToStr(X);
-  StatusBar1.Panels[2].Text := IntToStr(Y);
-  StatusBar1.Panels[4].Text := IntToStr(MATRIX[X,Y,0])+','+IntToStr(MATRIX[X,Y,1])+','+IntToStr(MATRIX[X,Y,2]);
-  StatusBar1.Panels[8].Text := IntToStr(CONVERTED_HSV_MATRIX[X,Y,0])+', '+IntToStr(CONVERTED_HSV_MATRIX[X,Y,1])+', '+IntToStr(CONVERTED_HSV_MATRIX[X,Y,2]);
+  // Protección básica: dimensiones válidas
+  if (IMG_WIDTH = 0) or (IMG_HEIGHT = 0) then Exit;
+  if (X < 0) or (X >= IMG_WIDTH) or (Y < 0) or (Y >= IMG_HEIGHT) then Exit;
 
-  // Mostrar color
+  // Actualizar paneles solo si existen
+  if StatusBar1.Panels.Count > 1 then
+    StatusBar1.Panels[1].Text := IntToStr(X);
+  if StatusBar1.Panels.Count > 2 then
+    StatusBar1.Panels[2].Text := IntToStr(Y);
+
+  if (Length(MATRIX) > 0) and (Length(MATRIX[0]) > 0) then
+  begin
+    if StatusBar1.Panels.Count > 4 then
+      StatusBar1.Panels[4].Text := IntToStr(MATRIX[X, Y, 0]) + ',' + IntToStr(MATRIX[X, Y, 1]) + ',' + IntToStr(MATRIX[X, Y, 2]);
+  end;
+
+    if (Length(CONVERTED_HSV_MATRIX) > 0) and (Length(CONVERTED_HSV_MATRIX[0]) > 0) then
+  begin
+    if StatusBar1.Panels.Count > 8 then
+      StatusBar1.Panels[8].Text := IntToStr(CONVERTED_HSV_MATRIX[X, Y, 0]) + ', ' + IntToStr(CONVERTED_HSV_MATRIX[X, Y, 1]) + ', ' + IntToStr(CONVERTED_HSV_MATRIX[X, Y, 2]);
+  end;
+
+  // Mostrar color (solo si hay matrices válidas)
   Label1.Visible := True;
   Shape1.Visible := True;
   if COLOR_MODE = 1 then
-    Shape1.Brush.Color := RGBToColor(MATRIX[x, y, 0], MATRIX[x, y, 1], MATRIX[x, y, 2])
+  begin
+    if (Length(MATRIX) > 0) and (Length(MATRIX[0]) > 0) then
+      Shape1.Brush.Color := RGBToColor(MATRIX[X, Y, 0], MATRIX[X, Y, 1], MATRIX[X, Y, 2])
+    else
+      Shape1.Brush.Color := clBtnFace;
+  end
   else
-    Shape1.Brush.Color := RGBToColor(CONVERTED_GRAY_MATRIX[x, y, 0], CONVERTED_GRAY_MATRIX[x, y, 1], CONVERTED_GRAY_MATRIX[x, y, 2]);
-
+  begin
+    if (Length(CONVERTED_GRAY_MATRIX) > 0) and (Length(CONVERTED_GRAY_MATRIX[0]) > 0) then
+      Shape1.Brush.Color := RGBToColor(CONVERTED_GRAY_MATRIX[X, Y, 0], CONVERTED_GRAY_MATRIX[X, Y, 1], CONVERTED_GRAY_MATRIX[X, Y, 2])
+    else
+      Shape1.Brush.Color := clBtnFace;
+  end;
 
 end;
 
@@ -247,7 +286,10 @@ var
   red, green, blue, gray: Byte;
   minimumValue, maximumValue: Byte;
 begin
-  if (imageWidth = 0) or (imageHeight = 0) then Exit;
+  if (imageWidth = 0) or (imageHeight = 0) then
+  begin
+    Exit;
+  end;
 
   // CORRECCIÓN 1: Inicializar la matriz DE DESTINO, no la global auxiliar
   SetLength(CONVERTED_GRAY_MATRIX, imageWidth, imageHeight, 3);
@@ -297,32 +339,32 @@ begin
      SetLength(CONVERTED_GRAY_MATRIX, 0, 0, 0);
      SetLength(CONVERTED_HSV_MATRIX, 0, 0, 0);
 
-     Image1.Enabled:=True;
-     BMAP.LoadFromFile(OpenPictureDialog1.FileName);
-     HEIGHT:=BMAP.Height;
-     WIDTH:=BMAP.Width;
+    Image1.Enabled := True;
+    BMAP.LoadFromFile(OpenPictureDialog1.FileName);
+    IMG_HEIGHT := BMAP.Height;
+    IMG_WIDTH := BMAP.Width;
 
-     if BMAP.PixelFormat<> pf24bit then   //garantizar 8 bits por canal
+     if BMAP.PixelFormat <> pf24bit then   //garantizar 8 bits por canal
      begin
-      BMAP.PixelFormat:=pf24bit;
+       BMAP.PixelFormat := pf24bit;
      end;
 
-     StatusBar1.Panels[6].Text:=IntToStr(HEIGHT)+'x'+IntToStr(WIDTH);
-     SetLength(MATRIX,WIDTH,HEIGHT,3);
-     SetLength(ORIGINAL_MATRIX,WIDTH,HEIGHT,3);
-     copyImageToMatrix(HEIGHT, WIDTH, BMAP, MATRIX);  //copiar (TPicture)contenido de bitmap a MAT
-     copyImageToMatrix(HEIGHT, WIDTH, BMAP, ORIGINAL_MATRIX); // respaldar matriz
+    StatusBar1.Panels[6].Text := IntToStr(IMG_HEIGHT) + 'x' + IntToStr(IMG_WIDTH);
+    SetLength(MATRIX, IMG_WIDTH, IMG_HEIGHT, 3);
+    SetLength(ORIGINAL_MATRIX, IMG_WIDTH, IMG_HEIGHT, 3);
+    copyImageToMatrix(IMG_HEIGHT, IMG_WIDTH, BMAP, MATRIX);  //copiar (TPicture)contenido de bitmap a MAT
+    copyImageToMatrix(IMG_HEIGHT, IMG_WIDTH, BMAP, ORIGINAL_MATRIX); // respaldar matriz
 
-     Image1.Picture.Assign(BMAP);  //ver imagen
-     RGBMatrixToHSVMatrix(HEIGHT, WIDTH, MATRIX, CONVERTED_HSV_MATRIX);
-     COLOR_MODE := 1
+    Image1.Picture.Assign(BMAP);  //ver imagen
+    RGBMatrixToHSVMatrix(IMG_HEIGHT, IMG_WIDTH, MATRIX, CONVERTED_HSV_MATRIX);
+     COLOR_MODE := 1;
   end;
 end;
 procedure TForm1.MenuItem4Click(Sender: TObject);
 begin
-  if (WIDTH > 0) AND (HEIGHT > 0) then
+  if (IMG_WIDTH > 0) AND (IMG_HEIGHT > 0) then
   begin
-   generateHistogram(HEIGHT, WIDTH, MATRIX);
+  generateHistogram(IMG_HEIGHT, IMG_WIDTH, MATRIX);
    Chart1.Visible := True;
    ShowMessage('Histograma generado');
   end
@@ -334,9 +376,9 @@ procedure TForm1.MenuItem6Click(Sender: TObject);
 var
   GRAY_MATRIX: GRAY_SCALE_MATRIX;
 begin
-  if (WIDTH > 0) AND (HEIGHT > 0) then
+  if (IMG_WIDTH > 0) AND (IMG_HEIGHT > 0) then
   begin
-   mediumRangeGrayScale(HEIGHT, WIDTH, MATRIX, CONVERTED_GRAY_MATRIX, BMAP);
+   mediumRangeGrayScale(IMG_HEIGHT, IMG_WIDTH, MATRIX, CONVERTED_GRAY_MATRIX, BMAP);
    Image1.Picture.Assign(BMAP);
    COLOR_MODE := 2;
   end;
@@ -346,15 +388,15 @@ procedure TForm1.MenuItem8Click(Sender: TObject);
 var
   i, j, k: Integer;
 begin
-  if WIDTH > 0 then
+  if (IMG_WIDTH > 0) AND (IMG_HEIGHT > 0) then
   begin
-   copyMatrixToImage(HEIGHT, WIDTH, ORIGINAL_MATRIX, BMAP);
+    copyMatrixToImage(IMG_HEIGHT, IMG_WIDTH, ORIGINAL_MATRIX, BMAP);
 
-   SetLength(MATRIX,WIDTH,HEIGHT,3);
+    SetLength(MATRIX,IMG_WIDTH,IMG_HEIGHT,3);
    //copyMatrixToImage(HEIGHT, WIDTH, MATRIX, BMAP);  //copiar (TPicture)contenido de bitmap a MAT
-   for i := 0 to WIDTH - 1 do
+   for i := 0 to IMG_WIDTH - 1 do
     begin
-      for j := 0 to HEIGHT - 1 do
+      for j := 0 to IMG_HEIGHT - 1 do
        begin
          for k := 0 to 2 do
           MATRIX[i, j, k] := ORIGINAL_MATRIX[i, j, k];
@@ -362,7 +404,7 @@ begin
     end;
 
    Image1.Picture.Assign(BMAP);  //visulaizar imagen
-   RGBMatrixToHSVMatrix(HEIGHT, WIDTH, MATRIX, CONVERTED_HSV_MATRIX);
+  RGBMatrixToHSVMatrix(IMG_HEIGHT, IMG_WIDTH, MATRIX, CONVERTED_HSV_MATRIX);
    COLOR_MODE := 1;
    ShowMessage('Imagen restaurada');
   end
@@ -409,6 +451,16 @@ begin
   Chart1BarSeries3.Clear;
   Chart1LineSeries1.Clear;
 
+  // Asegurar rango del eje X para 0..255 (valores de intensidad)
+  try
+    Chart1.AxisList[1].Range.UseMin := True;
+    Chart1.AxisList[1].Range.Min := 0;
+    Chart1.AxisList[1].Range.UseMax := True;
+    Chart1.AxisList[1].Range.Max := 255;
+  except
+    // si no está disponible, no bloquear la generación
+  end;
+
   // Llenar series
   for i := 0 to 255 do
   begin
@@ -423,4 +475,3 @@ begin
 end;
 
 end.
-
