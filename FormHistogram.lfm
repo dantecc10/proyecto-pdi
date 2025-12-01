@@ -1,0 +1,52 @@
+object FormHist: TFormHist
+  Left = 500
+  Height = 400
+  Top = 250
+  Width = 700
+  Caption = 'Histograma'
+  ClientHeight = 400
+  ClientWidth = 700
+  Position = poScreenCenter
+  LCLVersion = '3.0.0.3'
+  Visible = False
+  object Chart1: TChart
+    Left = 0
+    Height = 400
+    Top = 0
+    Width = 700
+    AxisList = <    
+      item
+        Minors = <>
+        Title.LabelFont.Orientation = 900
+      end    
+      item
+        Alignment = calBottom
+        Minors = <>
+      end>
+    Foot.Brush.Color = clBtnFace
+    Foot.Font.Color = clBlue
+    Title.Brush.Color = clBtnFace
+    Title.Font.Color = clBlue
+    Title.Text.Strings = (
+      'Histograma RGB'
+    )
+    Align = alClient
+    ParentColor = False
+    object Chart1LineSeries1: TLineSeries
+      Title = 'Intensidad'
+      LinePen.Color = clBlack
+    end
+    object Chart1LineSeries2: TLineSeries
+      Title = 'Rojo'
+      LinePen.Color = clRed
+    end
+    object Chart1LineSeries3: TLineSeries
+      Title = 'Verde'
+      LinePen.Color = clGreen
+    end
+    object Chart1LineSeries4: TLineSeries
+      Title = 'Azul'
+      LinePen.Color = clBlue
+    end
+  end
+end

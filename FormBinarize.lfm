@@ -1,0 +1,104 @@
+object FormBinarization: TFormBinarization
+  Left = 2777
+  Height = 600
+  Top = 475
+  Width = 800
+  Caption = 'Binarización de Imagen'
+  ClientHeight = 600
+  ClientWidth = 800
+  Position = poScreenCenter
+  LCLVersion = '2.2.0.4'
+  object Panel1: TPanel
+    Left = 0
+    Height = 120
+    Top = 480
+    Width = 800
+    Align = alBottom
+    ClientHeight = 120
+    ClientWidth = 800
+    TabOrder = 0
+    object Label1: TLabel
+      Left = 16
+      Height = 17
+      Top = 16
+      Width = 138
+      Caption = 'Método de conversión:'
+    end
+    object Label2: TLabel
+      Left = 16
+      Height = 17
+      Top = 64
+      Width = 71
+      Caption = 'Umbral: 128'
+    end
+    object Metodo: TComboBox
+      Left = 160
+      Height = 29
+      Top = 12
+      Width = 176
+      ItemHeight = 0
+      ItemIndex = 0
+      Items.Strings = (
+        'Intensidad'
+        'Luma'
+        'Canal R'
+        'Canal G'
+        'Canal B'
+      )
+      OnChange = MetodoChange
+      Style = csDropDownList
+      TabOrder = 0
+      Text = 'Intensidad'
+    end
+    object Umbral: TTrackBar
+      Left = 96
+      Height = 49
+      Top = 60
+      Width = 400
+      Max = 255
+      OnChange = UmbralChange
+      Position = 128
+      TabOrder = 1
+    end
+    object Aplicar: TButton
+      Left = 520
+      Height = 35
+      Top = 70
+      Width = 120
+      Caption = 'Aplicar'
+      OnClick = AplicarClick
+      TabOrder = 2
+    end
+    object Cancelar: TButton
+      Left = 660
+      Height = 35
+      Top = 70
+      Width = 120
+      Caption = 'Cancelar'
+      OnClick = CancelarClick
+      TabOrder = 3
+    end
+  end
+  object Panel2: TPanel
+    Left = 0
+    Height = 480
+    Top = 0
+    Width = 800
+    Align = alClient
+    Caption = 'Vista previa'
+    ClientHeight = 480
+    ClientWidth = 800
+    TabOrder = 1
+    object Image1: TImage
+      Left = 1
+      Height = 478
+      Top = 1
+      Width = 798
+      Align = alClient
+      AutoSize = True
+      Center = True
+      Proportional = True
+      Stretch = True
+    end
+  end
+end
