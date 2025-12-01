@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, Menus, ComCtrls,
   ExtCtrls, StdCtrls, ExtDlgs, TAGraph, TASeries, TAChartUtils, Math,
-  ImageProcessing, FormHistogram, FormBinarize, FormGamma;
+  ImageProcessing, FormHistogram, FormBinarize, FormGamma, FormContrast;
 
 type
 
@@ -43,6 +43,7 @@ type
       Integer);
     procedure Label1Click(Sender: TObject);
     procedure MenuItem4Click(Sender: TObject);
+    procedure MenuItem11Click(Sender: TObject);
     procedure MenuItem10Click(Sender: TObject);
     procedure RestaurarClick(Sender: TObject);
   end;
@@ -54,6 +55,7 @@ var
   CONVERTED_HSV_MATRIX: HSV_MATRIX;
   GRAY_SCALE_VALUES: GRAY_SCALE_MATRIX;
   CONVERTED_GRAY_MATRIX: RGB_MATRIX;
+  CONTRAST_ENHANCED_MATRIX: RGB_MATRIX;
   BMAP: TBitmap;
   IMAGE_CONTAINER_HEIGHT, IMAGE_CONTAINER_WIDTH: Integer;
 
@@ -184,7 +186,7 @@ begin
     else
       Shape1.Brush.Color := clBtnFace;
   end
-  else if COLOR_MODE = 2 then // Modo escala de grises
+  else //if COLOR_MODE = 2 then // Modo escala de grises
   begin
     if (Length(CONVERTED_GRAY_MATRIX) > 0) and (Length(CONVERTED_GRAY_MATRIX[0]) > 0) then
       Shape1.Brush.Color := RGBToColor(CONVERTED_GRAY_MATRIX[X, Y, 0], CONVERTED_GRAY_MATRIX[X, Y, 1], CONVERTED_GRAY_MATRIX[X, Y, 2])
@@ -257,6 +259,67 @@ begin
     end;
   finally
     GammaForm.Free;
+  end;
+end;
+
+procedure TForm1.MenuItem11Click(Sender: TObject);
+var
+  s: string;
+  methodIndex: Integer;
+  p: Double;
+  tmpMatrix: RGB_MATRIX;
+  frm: TFormContrast;
+begin
+  if (IMG_WIDTH = 0) or (IMG_HEIGHT = 0) then
+  begin
+    ShowMessage('Primero debes cargar una imagen');
+    Exit;
+  end;
+  // Preguntar si usar percentil (Yes) o autolimit (No)
+  if MessageDlg('Ajuste contraste', '¿Usar Percentil (Yes) o Auto (No)?', mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+  begin
+    // Abrir formulario con trackbar para percentil
+    frm := TFormContrast.Create(Self);
+    try
+      frm.SetSourceImage(MATRIX, IMG_HEIGHT, IMG_WIDTH);
+      if frm.ShowModal = mrOk then
+      begin
+        CONTRAST_ENHANCED_MATRIX := frm.GetResultMatrix;
+        // Aplicar si el usuario acepta (asignación por referencia)
+        MATRIX := CONTRAST_ENHANCED_MATRIX;
+        ImageProcessing.CopyMatrixToImage(IMG_HEIGHT, IMG_WIDTH, MATRIX, BMAP);
+        Image1.Picture.Assign(BMAP);
+        ImageProcessing.RGBMatrixToHSVMatrix(IMG_HEIGHT, IMG_WIDTH, MATRIX, CONVERTED_HSV_MATRIX);
+      end
+      else
+      begin
+        // Canceló: no cambiar MATRIX
+        ImageProcessing.CopyMatrixToImage(IMG_HEIGHT, IMG_WIDTH, MATRIX, BMAP);
+        Image1.Picture.Assign(BMAP);
+      end;
+    finally
+      frm.Free;
+    end;
+  end
+  else
+  begin
+    // Autolimit: aplicar y pedir confirmación
+    tmpMatrix := Copy(MATRIX);
+    ImageProcessing.ApplyContrastMatrix(MATRIX, tmpMatrix, IMG_HEIGHT, IMG_WIDTH, 0, 0.0);
+    ImageProcessing.CopyMatrixToImage(IMG_HEIGHT, IMG_WIDTH, tmpMatrix, BMAP);
+    Image1.Picture.Assign(BMAP);
+    if MessageDlg('Ajuste contraste', '¿Aplicar ajuste de contraste automático?', mtConfirmation, [mbYes, mbNo], 0) = mrYes then
+    begin
+      // store and assign by reference
+      CONTRAST_ENHANCED_MATRIX := tmpMatrix;
+      MATRIX := CONTRAST_ENHANCED_MATRIX;
+      ImageProcessing.RGBMatrixToHSVMatrix(IMG_HEIGHT, IMG_WIDTH, MATRIX, CONVERTED_HSV_MATRIX);
+    end
+    else
+    begin
+      ImageProcessing.CopyMatrixToImage(IMG_HEIGHT, IMG_WIDTH, MATRIX, BMAP);
+      Image1.Picture.Assign(BMAP);
+    end;
   end;
 end;
 

@@ -1,7 +1,7 @@
 object FormGammaCorrection: TFormGammaCorrection
-  Left = 2137
+  Left = 2204
   Height = 600
-  Top = 323
+  Top = 462
   Width = 800
   Caption = 'Corrección Gamma'
   ClientHeight = 600

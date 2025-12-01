@@ -42,6 +42,10 @@ procedure ApplyGammaCorrection(var matrix: RGB_MATRIX; imageHeight,
 procedure ApplyContrast(var matrix: RGB_MATRIX; imageHeight, imageWidth: Integer;
   methodIndex: Integer; percentile: Double);
 
+// Non-destructive version: apply contrast reading from src and writing to dst
+procedure ApplyContrastMatrix(const src: RGB_MATRIX; var dst: RGB_MATRIX; imageHeight, imageWidth: Integer;
+  methodIndex: Integer; percentile: Double);
+
 { Funciones de análisis }
 procedure GenerateHistogram(imageHeight, imageWidth: Integer; 
   const matrix: RGB_MATRIX; out histData: THistogramData);
@@ -82,6 +86,76 @@ begin
     end;
   finally
     B.EndUpdate;
+  end;
+end;
+
+procedure ApplyContrastMatrix(const src: RGB_MATRIX; var dst: RGB_MATRIX; imageHeight, imageWidth: Integer;
+  methodIndex: Integer; percentile: Double);
+var
+  hist: array[0..255] of Integer;
+  total, lowVal, highVal: Integer;
+  i, x, y, k: Integer;
+  lut: array[0..255] of Byte;
+  HSVtmp: HSV_MATRIX;
+  r, g, b: Byte;
+begin
+  if (imageWidth = 0) or (imageHeight = 0) then
+    Exit;
+
+  // Ensure destination size
+  SetLength(dst, imageWidth, imageHeight, 3);
+
+  if methodIndex in [0, 1] then
+  begin
+    // Convert source RGB to HSV temporary
+    RGBMatrixToHSVMatrix(imageHeight, imageWidth, src, HSVtmp);
+
+    for i := 0 to 255 do
+      hist[i] := 0;
+    for x := 0 to imageWidth - 1 do
+      for y := 0 to imageHeight - 1 do
+        Inc(hist[HSVtmp[x, y, 2]]);
+
+    total := imageWidth * imageHeight;
+
+    if methodIndex = 0 then
+    begin
+      lowVal := 255;
+      highVal := 0;
+      for i := 0 to 255 do
+        if hist[i] > 0 then
+        begin
+          if i < lowVal then lowVal := i;
+          if i > highVal then highVal := i;
+        end;
+    end
+    else
+    begin
+      lowVal := PercentileFromHist(hist, total, percentile);
+      highVal := PercentileFromHist(hist, total, 1.0 - percentile);
+    end;
+
+    if highVal <= lowVal then
+      for i := 0 to 255 do
+        lut[i] := i
+    else
+      for i := 0 to 255 do
+        if i <= lowVal then
+          lut[i] := 0
+        else if i >= highVal then
+          lut[i] := 255
+        else
+          lut[i] := Byte(Round((i - lowVal) * 255 / (highVal - lowVal)));
+
+    for x := 0 to imageWidth - 1 do
+      for y := 0 to imageHeight - 1 do
+      begin
+        HSVtmp[x, y, 2] := lut[HSVtmp[x, y, 2]];
+        HSVByteToRGB(HSVtmp[x, y, 0], HSVtmp[x, y, 1], HSVtmp[x, y, 2], r, g, b);
+        dst[x, y, 0] := r;
+        dst[x, y, 1] := g;
+        dst[x, y, 2] := b;
+      end;
   end;
 end;
 
@@ -219,7 +293,7 @@ end;
 { Funciones de procesamiento }
 
 procedure BinarizeMatrix(const src: RGB_MATRIX; var dst: RGB_MATRIX;
-  imageHeight, imageWidth: Integer; modeIndex: Integer; threshold: Byte);
+  imageHeight, imageWidth, modeIndex: Integer; threshold: Byte);
 var
   x, y: Integer;
   r, g, b: Byte;
@@ -362,55 +436,8 @@ begin
 
   if methodIndex in [0, 1] then
   begin
-    // Aplicar en luminancia (HSV)
-    RGBMatrixToHSVMatrix(imageHeight, imageWidth, matrix, HSVtmp);
-    
-    for i := 0 to 255 do
-      hist[i] := 0;
-    for x := 0 to imageWidth - 1 do
-      for y := 0 to imageHeight - 1 do
-        Inc(hist[HSVtmp[x, y, 2]]);
-        
-    total := imageWidth * imageHeight;
-    
-    if methodIndex = 0 then
-    begin
-      lowVal := 255;
-      highVal := 0;
-      for i := 0 to 255 do
-        if hist[i] > 0 then
-        begin
-          if i < lowVal then lowVal := i;
-          if i > highVal then highVal := i;
-        end;
-    end
-    else
-    begin
-      lowVal := PercentileFromHist(hist, total, percentile);
-      highVal := PercentileFromHist(hist, total, 1.0 - percentile);
-    end;
-
-    if highVal <= lowVal then
-      for i := 0 to 255 do
-        lut[i] := i
-    else
-      for i := 0 to 255 do
-        if i <= lowVal then
-          lut[i] := 0
-        else if i >= highVal then
-          lut[i] := 255
-        else
-          lut[i] := Byte(Round((i - lowVal) * 255 / (highVal - lowVal)));
-
-    for x := 0 to imageWidth - 1 do
-      for y := 0 to imageHeight - 1 do
-      begin
-        HSVtmp[x, y, 2] := lut[HSVtmp[x, y, 2]];
-        HSVByteToRGB(HSVtmp[x, y, 0], HSVtmp[x, y, 1], HSVtmp[x, y, 2], r, g, b);
-        matrix[x, y, 0] := r;
-        matrix[x, y, 1] := g;
-        matrix[x, y, 2] := b;
-      end;
+    // Aplicar en luminancia (HSV) using non-destructive helper
+    ApplyContrastMatrix(matrix, matrix, imageHeight, imageWidth, methodIndex, percentile);
   end;
 end;
 
